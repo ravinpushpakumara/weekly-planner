@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#2563EB">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Weekly Planner">
+<link rel="manifest" href="manifest.json">
+<title>Weekly Planner</title>
+<style>
+  :root {
+    --bg:#F0F7FF; --surface:#fff; --border:#D0E4FF;
+    --accent:#2563EB; --green:#16A34A; --red:#DC2626; --yellow:#CA8A04;
+    --blue:#1D4ED8; --orange:#EA580C;
+    --text:#1E293B; --muted:#64748B;
+    --card-bg:#fff; --input-bg:#F0F7FF;
+    --radius:14px; --shadow:0 4px 20px rgba(37,99,235,0.10);
+    --font:'Segoe UI',system-ui,sans-serif;
+  }
+  body.dark {
+    --bg:#0F172A; --surface:#1E293B; --border:#334155;
+    --text:#F1F5F9; --muted:#94A3B8;
+    --card-bg:#1E293B; --input-bg:#0F172A;
+    --shadow:0 4px 20px rgba(0,0,0,0.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);font-family:var(--font);color:var(--text);min-height:100vh;padding-bottom:60px;transition:background .3s,color .3s;}
+
+  .header{background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;}
+  .header-left{display:flex;align-items:center;gap:12px;}
+  .header-icon{background:rgba(255,255,255,0.2);border-radius:12px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .header h1{font-size:18px;font-weight:700;}
+  .header p{font-size:11px;opacity:0.7;margin-top:2px;}
+  .dark-toggle{background:rgba(255,255,255,0.2);border:none;border-radius:20px;padding:6px 14px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+
+  #setup-screen{margin:20px 16px;background:var(--surface);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+  #setup-screen h2{font-size:17px;margin-bottom:18px;color:var(--accent);}
+  .setup-step{display:flex;gap:12px;margin-bottom:18px;align-items:flex-start;}
+  .step-num{background:var(--accent);color:#fff;border-radius:50%;width:28px;height:28px;min-width:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-top:2px;}
+  .step-text{font-size:14px;line-height:1.6;color:var(--text);}
+  .step-text strong{display:block;font-size:15px;margin-bottom:4px;}
+  .step-text code{background:var(--input-bg);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px;display:inline-block;margin:2px;}
+  .url-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:monospace;background:var(--input-bg);color:var(--text);margin-top:8px;}
+  .url-input:focus{outline:none;border-color:var(--accent);}
+  .divider{border:none;border-top:1px solid var(--border);margin:18px 0;}
+  .btn-primary{width:100%;padding:15px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:16px;font-weight:700;cursor:pointer;margin-top:12px;}
+
+  #main-app{display:none;}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;margin:16px 16px 8px;}
+  .toolbar-title{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+  .refresh-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+
+  .week-group{margin:0 16px 12px;}
+  .week-header{background:#94A3B8;color:#fff;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:6px;}
+  .week-header.current{background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 4px 15px rgba(37,99,235,0.3);}
+  .week-title{font-size:14px;font-weight:700;}
+  .week-subtitle{font-size:11px;opacity:0.8;margin-top:2px;}
+  .week-arrow{font-size:16px;transition:transform .2s;}
+  .week-arrow.collapsed{transform:rotate(-90deg);}
+  .week-body.collapsed{display:none;}
+
+  .day-card{background:var(--card-bg);border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow);border-left:4px solid var(--border);overflow:hidden;}
+  .day-card.archived{border-left-color:var(--green);}
+  .day-card.not-archived{border-left-color:var(--red);}
+  .day-card.cancelled{border-left-color:var(--yellow);}
+  .day-card.holiday{border-left-color:var(--blue);}
+  .day-card.leave{border-left-color:var(--orange);}
+
+  .day-header{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+  .day-left .day-date{font-size:13px;font-weight:700;color:var(--accent);}
+  .day-left .day-desc{font-size:14px;font-weight:600;margin-top:3px;line-height:1.4;}
+  .day-right{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+  .status-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .badge-archived{background:#DCFCE7;color:var(--green);}
+  .badge-not-archived{background:#FEE2E2;color:var(--red);}
+  .badge-cancelled{background:#FEF9C3;color:var(--yellow);}
+  .badge-holiday{background:#DBEAFE;color:var(--blue);}
+  .badge-leave{background:#FFEDD5;color:var(--orange);}
+  .badge-empty{background:var(--input-bg);color:var(--muted);}
+  .draft-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:#FEF3C7;color:#92400E;}
+  .day-arrow{font-size:14px;color:var(--muted);transition:transform .2s;}
+  .day-arrow.collapsed{transform:rotate(-90deg);}
+
+  .day-body{padding:0 16px 16px;border-top:1px solid var(--border);}
+  .day-body.collapsed{display:none;}
+
+  .field{margin-bottom:12px;margin-top:12px;}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+  .field select,.field textarea,.field input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:var(--font);color:var(--text);background:var(--input-bg);transition:border .2s;-webkit-appearance:none;}
+  .field select:focus,.field textarea:focus,.field input:focus{outline:none;border-color:var(--accent);background:var(--surface);}
+  .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%2364748B'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;}
+  .field textarea{min-height:60px;resize:vertical;font-size:14px;}
+  .section-divider{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 10px;padding-top:12px;border-top:1px solid var(--border);}
+
+  .trip-leg{background:var(--input-bg);border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;}
+  .trip-leg.trip-saved{border-color:var(--green);}
+  .trip-leg-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;}
+  .trip-leg-title{font-size:12px;font-weight:700;color:var(--accent);}
+  .trip-leg-summary{font-size:11px;color:var(--muted);margin-top:2px;}
+  .trip-saved-badge{font-size:10px;background:#DCFCE7;color:var(--green);padding:2px 8px;border-radius:10px;font-weight:700;margin-left:6px;}
+  .trip-leg-actions{display:flex;gap:6px;align-items:center;}
+  .remove-trip-btn{background:var(--red);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;}
+  .save-trip-btn{background:var(--green);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:600;}
+  .edit-trip-btn{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;}
+  .trip-body.collapsed{display:none;}
+  .trip-arrow{font-size:12px;color:var(--muted);transition:transform .2s;}
+  .trip-arrow.collapsed{transform:rotate(-90deg);}
+
+  .trip-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;margin-top:8px;}
+  .trip-input{width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:var(--font);color:var(--text);background:var(--surface);-webkit-appearance:none;margin-bottom:2px;}
+  .trip-input:focus{outline:none;border-color:var(--accent);}
+  .trip-select{width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:var(--font);color:var(--text);background:var(--surface);-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%2364748B'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;margin-bottom:2px;}
+  .trip-select:focus{outline:none;border-color:var(--accent);}
+  .trip-amounts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+
+  .add-trip-btn{width:100%;padding:11px;background:transparent;color:var(--accent);border:1.5px dashed var(--accent);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;}
+
+  .totals-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;}
+  .total-box{background:var(--input-bg);border-radius:10px;padding:10px 8px;text-align:center;}
+  .total-box.green-box{background:#F0FDF4;}
+  .total-box.orange-box{background:#FFF7ED;}
+  .total-box-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+  .total-box-amount{font-size:14px;font-weight:700;color:var(--accent);margin-top:3px;}
+  .total-box.green-box .total-box-amount{color:var(--green);}
+  .total-box.orange-box .total-box-amount{color:var(--orange);}
+
+  .line-total-box{background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:10px;padding:14px;margin-top:14px;display:flex;justify-content:space-between;align-items:center;}
+  .line-total-label{font-size:13px;font-weight:700;color:var(--green);}
+  .line-total-amount{font-size:20px;font-weight:700;color:var(--green);}
+
+  .save-row-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px;}
+  .save-row-btn:disabled{opacity:0.5;}
+  .save-row-btn.saved{background:var(--green);}
+  .clear-draft-btn{width:100%;padding:10px;background:transparent;color:var(--red);border:1.5px solid var(--red);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
+  .collapse-bottom-btn{width:100%;padding:10px;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
+
+  .hidden{display:none!important;}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--text);color:var(--bg);padding:13px 28px;border-radius:30px;font-size:14px;font-weight:500;transition:transform .3s;z-index:999;white-space:nowrap;}
+  #toast.show{transform:translateX(-50%) translateY(0);}
+  #toast.success{background:var(--green);color:#fff;}
+  #toast.error{background:var(--red);color:#fff;}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .empty-state{text-align:center;padding:50px 20px;color:var(--muted);font-size:15px;}
+  .empty-state .icon{font-size:42px;margin-bottom:12px;}
+  .reset-link{text-align:center;margin:16px;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">📅</div>
+    <div><h1>Weekly Planner</h1><p>Update your weekly schedule</p></div>
+  </div>
+  <button class="dark-toggle" onclick="toggleDark()" id="dark-btn">🌙 Dark</button>
+</div>
+
+<div id="setup-screen">
+  <h2>⚙️ Setup</h2>
+  <div class="setup-step">
+    <div class="step-num">1</div>
+    <div class="step-text">
+      <strong>Sheet Row 1 headers:</strong>
+      <code>A:Date</code><code>B:Description</code><code>C:Status</code><code>D:Reason</code>
+      <code>E:Batta</code><code>F:Lodging</code><code>G:Night Meal</code><code>H:Travelling</code>
+      <code>I:Fuel</code><code>J:Other</code><code>K:Line Total</code><code>L:Claim Office</code>
+      <code>M-V:Trip1-Trip10</code><code>W:Claim My Money</code><code>X:Actual Expenses</code><code>Y:Office Claim</code>
+    </div>
+  </div>
+  <hr class="divider">
+  <div class="setup-step">
+    <div class="step-num">2</div>
+    <div class="step-text">
+      <strong>Paste your Web App URL</strong>
+      <input type="url" class="url-input" id="script-url-input" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+  </div>
+  <button class="btn-primary" onclick="saveScriptUrl()">✅ Save & Open App</button>
+</div>
+
+<div id="main-app">
+  <div class="toolbar">
+    <span class="toolbar-title">Weekly Planner</span>
+    <button class="refresh-btn" onclick="loadRows()">↻ Refresh</button>
+  </div>
+  <div id="rows-container"><div class="empty-state"><div class="icon">⏳</div>Loading…</div></div>
+  <p class="reset-link" onclick="resetSetup()">Change script URL</p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SCRIPT_URL_KEY = "planner_final_url";
+const DRAFT_KEY      = "planner_final_drafts";
+const TRIP_SAVE_KEY  = "planner_final_trip_saves";
+const TRIP_COUNT_KEY = "planner_final_trip_counts";
+
+let SCRIPT_URL = localStorage.getItem(SCRIPT_URL_KEY) || "";
+let allRows = [];
+let drafts    = JSON.parse(localStorage.getItem(DRAFT_KEY)||"{}");
+let tripSaves = JSON.parse(localStorage.getItem(TRIP_SAVE_KEY)||"{}");
+let tripCounts= JSON.parse(localStorage.getItem(TRIP_COUNT_KEY)||"{}");
+let tripCount = {};
+
+window.onload = () => {
+  if(localStorage.getItem("dark_mode")==="1"){
+    document.body.classList.add("dark");
+    document.getElementById("dark-btn").textContent="☀️ Light";
+  }
+  if(SCRIPT_URL) showApp();
+};
+
+function toggleDark(){
+  const d=document.body.classList.toggle("dark");
+  document.getElementById("dark-btn").textContent=d?"☀️ Light":"🌙 Dark";
+  localStorage.setItem("dark_mode",d?"1":"0");
+}
+
+function saveScriptUrl(){
+  const val=document.getElementById("script-url-input").value.trim();
+  if(!val.includes("script.google.com")){showToast("Please paste a valid Apps Script URL","error");return;}
+  SCRIPT_URL=val;
+  localStorage.setItem(SCRIPT_URL_KEY,SCRIPT_URL);
+  showApp();
+  showToast("✅ Connected!","success");
+}
+
+function showApp(){
+  document.getElementById("setup-screen").style.display="none";
+  document.getElementById("main-app").style.display="block";
+  loadRows();
+}
+
+function resetSetup(){
+  document.getElementById("setup-screen").style.display="block";
+  document.getElementById("main-app").style.display="none";
+  document.getElementById("script-url-input").value=SCRIPT_URL;
+}
+
+async function callScript(params){
+  const url=SCRIPT_URL+"?"+new URLSearchParams({action:params.action});
+  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(params),redirect:"follow"});
+  return await res.json();
+}
+
+async function loadRows(){
+  document.getElementById("rows-container").innerHTML=`<div class="empty-state"><div class="icon">⏳</div>Loading your plan…</div>`;
+  try{
+    const data=await callScript({action:"getRows"});
+    allRows=data.rows||[];
+    tripCount={};
+    renderWeeks();
+  }catch(e){
+    document.getElementById("rows-container").innerHTML=`<div class="empty-state"><div class="icon">⚠️</div>Could not load. Check internet.</div>`;
+  }
+}
+
+function formatDate(d){
+  if(!d) return "";
+  const dt=new Date(d);
+  if(isNaN(dt)) return String(d).split("T")[0];
+  return dt.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+}
+
+function groupIntoWeeks(rows){
+  const weeks=[];let cur=[],idx=[];
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i],blank=!r[0]&&!r[1]&&!r[2];
+    if(blank){if(cur.length){weeks.push({rows:cur,indexes:idx});cur=[];idx=[];}}
+    else{cur.push(r);idx.push(i);}
+  }
+  if(cur.length) weeks.push({rows:cur,indexes:idx});
+  return weeks;
+}
+
+function getCurrentWeekIndex(weeks){
+  const today=new Date();today.setHours(0,0,0,0);
+  for(let w=weeks.length-1;w>=0;w--){
+    for(const r of weeks[w].rows){
+      const d=new Date(r[0]);
+      if(!isNaN(d)&&(today-d)/864e5>=-1&&(today-d)/864e5<=7) return w;
+    }
+  }
+  return weeks.length-1;
+}
+
+function renderWeeks(){
+  const container=document.getElementById("rows-container");
+  if(!allRows.length){container.innerHTML=`<div class="empty-state"><div class="icon">📭</div>No data yet.</div>`;return;}
+  const weeks=groupIntoWeeks(allRows);
+  const curIdx=getCurrentWeekIndex(weeks);
+  let html="";
+  for(let w=0;w<weeks.length;w++){
+    const wk=weeks[w],isCur=w===curIdx;
+    const fd=formatDate(wk.rows[0][0]),ld=formatDate(wk.rows[wk.rows.length-1][0]);
+    html+=`<div class="week-group">
+      <div class="week-header ${isCur?"current":""}" onclick="toggleWeek(${w})">
+        <div>
+          <div class="week-title">📅 Week ${w+1} — ${fd}</div>
+          <div class="week-subtitle">${isCur?"🟢 Current Week":"to "+ld}</div>
+        </div>
+        <span class="week-arrow collapsed" id="wa_${w}">▼</span>
+      </div>
+      <div class="week-body collapsed" id="wb_${w}">`;
+    for(let r=0;r<wk.rows.length;r++) html+=buildDayCard(allRows[wk.indexes[r]],wk.indexes[r]);
+    html+=`</div></div>`;
+  }
+  container.innerHTML=html;
+  allRows.forEach((_,i)=>{try{calcTotals(i);}catch(e){}});
+}
+
+function toggleWeek(w){
+  const b=document.getElementById("wb_"+w),a=document.getElementById("wa_"+w);
+  const c=b.classList.toggle("collapsed");a.classList.toggle("collapsed",c);
+}
+
+function toggleDay(i){
+  const b=document.getElementById("db_"+i),a=document.getElementById("da_"+i);
+  const c=b.classList.toggle("collapsed");a.classList.toggle("collapsed",c);
+}
+
+function toggleTrip(i,t){
+  const b=document.getElementById("trip_body_"+i+"_"+t);
+  const a=document.getElementById("trip_arrow_"+i+"_"+t);
+  if(b){const c=b.classList.toggle("collapsed");if(a)a.classList.toggle("collapsed",c);}
+}
+
+function buildDayCard(row,i){
+  const date=row[0]||"",desc=row[1]||"",sheetStatus=row[2]||"";
+  const d=drafts[i]||{};
+  const hasDraft=Object.keys(d).length>0;
+
+  // Use draft values if available, else sheet values, else defaults
+  const status    =d.status    !==undefined?d.status    :(sheetStatus||"Archived");
+  const reason    =d.reason    !==undefined?d.reason    :(row[3]||"");
+  const batta     =d.batta     !==undefined?d.batta     :(String(row[4]||"700"));
+  const lodging   =d.lodging   !==undefined?d.lodging   :(String(row[5]||"0"));
+  const nightMeal =d.nightmeal !==undefined?d.nightmeal :(String(row[6]||"0"));
+  const fuel      =d.fuel      !==undefined?d.fuel      :(String(row[8]||"0"));
+  const otherExp  =d.other     !==undefined?d.other     :(String(row[9]||"0"));
+
+  // Count trips
+  const savedTrips=tripSaves[i]||[];
+  let existingTrips=0;
+  for(let t=0;t<10;t++){if(row[12+t]&&row[12+t]!=="")existingTrips=t+1;}
+  const draftTripCount=(d.trips||[]).length;
+  const savedCount=tripCounts[i]||0;
+  tripCount[i]=Math.max(existingTrips,draftTripCount,savedCount,1);
+
+  let bCls="badge-empty",bTxt="Not set",cCls="";
+  if(status==="Archived")    {bCls="badge-archived";    bTxt="✅ Archived";    cCls="archived";}
+  if(status==="Not Archived"){bCls="badge-not-archived";bTxt="❌ Not Archived";cCls="not-archived";}
+  if(status==="Cancelled")   {bCls="badge-cancelled";   bTxt="🟡 Cancelled";  cCls="cancelled";}
+  if(status==="Holiday")     {bCls="badge-holiday";     bTxt="🔵 Holiday";    cCls="holiday";}
+  if(status==="Leave")       {bCls="badge-leave";       bTxt="🟠 Leave";      cCls="leave";}
+
+  const showReason=["Not Archived","Cancelled","Holiday","Leave"].includes(status);
+  const showFuel=fuel&&fuel!=="0",showOther=otherExp&&otherExp!=="0";
+
+  let tripLegsHtml="";
+  for(let t=0;t<tripCount[i];t++){
+    const dt=(d.trips||[])[t]||{};
+    const sheetPrice=row[12+t]||"";
+    const isTripSaved=!!(savedTrips[t]);
+    tripLegsHtml+=buildTripLeg(i,t,dt,sheetPrice,isTripSaved);
+  }
+
+  return `<div class="day-card ${cCls}" id="card_${i}">
+    <div class="day-header" onclick="toggleDay(${i})">
+      <div class="day-left">
+        <div class="day-date">📅 ${formatDate(date)}</div>
+        <div class="day-desc">${desc}</div>
+      </div>
+      <div class="day-right">
+        <span class="status-badge ${bCls}" id="badge_${i}">${bTxt}</span>
+        ${hasDraft?`<span class="draft-badge">📝 Draft</span>`:""}
+        <span class="day-arrow collapsed" id="da_${i}">▼</span>
+      </div>
+    </div>
+    <div class="day-body collapsed" id="db_${i}">
+
+      <div class="field">
+        <label>📌 Status</label>
+        <select id="status_${i}" onchange="onStatusChange(${i})">
+          <option value="Archived"     ${status==="Archived"?"selected":""}>✅ Archived</option>
+          <option value="Not Archived" ${status==="Not Archived"?"selected":""}>❌ Not Archived</option>
+          <option value="Cancelled"    ${status==="Cancelled"?"selected":""}>🟡 Cancelled</option>
+          <option value="Holiday"      ${status==="Holiday"?"selected":""}>🔵 Holiday</option>
+          <option value="Leave"        ${status==="Leave"?"selected":""}>🟠 Leave</option>
+        </select>
+      </div>
+
+      <div class="field ${showReason?"":"hidden"}" id="rw_${i}">
+        <label>📝 Reason</label>
+        <textarea id="reason_${i}" placeholder="Type reason…" oninput="saveDraft(${i})">${reason}</textarea>
+      </div>
+
+      <div class="section-divider">💰 Allowances</div>
+      <div class="field">
+        <label>🎒 Batta</label>
+        <select id="batta_${i}" onchange="calcTotals(${i});saveDraft(${i})">
+          <option value="0"   ${batta==="0"?"selected":""}>0 (None)</option>
+          <option value="700" ${batta==="700"||!batta?"selected":""}>700</option>
+          <option value="800" ${batta==="800"?"selected":""}>800</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>🏨 Lodging</label>
+        <select id="lodging_${i}" onchange="onLodgingChange(${i})">
+          <option value="0"    ${lodging==="0"||!lodging?"selected":""}>0 (None)</option>
+          <option value="2500" ${lodging==="2500"?"selected":""}>2500</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>🍽️ Night Meal</label>
+        <select id="nightmeal_${i}" onchange="calcTotals(${i});saveDraft(${i})">
+          <option value="0"   ${nightMeal==="0"||!nightMeal?"selected":""}>0 (None)</option>
+          <option value="450" ${nightMeal==="450"?"selected":""}>450</option>
+          <option value="350" ${nightMeal==="350"?"selected":""}>350</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>⛽ Fuel</label>
+        <select id="fuel_sel_${i}" onchange="onFuelChange(${i})">
+          <option value="0"      ${!fuel||fuel==="0"?"selected":""}>0 (None)</option>
+          <option value="manual" ${fuel&&fuel!=="0"?"selected":""}>Type manually</option>
+        </select>
+      </div>
+      <div class="${showFuel?"":"hidden"}" id="fuel_wrap_${i}">
+        <div class="field">
+          <label>⛽ Fuel Amount (Rs.)</label>
+          <input type="number" id="fuel_${i}" value="${fuel&&fuel!=="0"?fuel:""}" placeholder="Amount" inputmode="decimal" oninput="calcTotals(${i});saveDraft(${i})">
+        </div>
+        <div class="field">
+          <label>⛽ Fuel Reason</label>
+          <input type="text" id="fuel_note_${i}" value="${d.fuelNote||""}" placeholder="e.g. Petrol for field visit" oninput="saveDraft(${i})">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>📦 Other Expenses</label>
+        <select id="other_sel_${i}" onchange="onOtherChange(${i})">
+          <option value="0"      ${!otherExp||otherExp==="0"?"selected":""}>0 (None)</option>
+          <option value="manual" ${otherExp&&otherExp!=="0"?"selected":""}>Type manually</option>
+        </select>
+      </div>
+      <div class="${showOther?"":"hidden"}" id="other_wrap_${i}">
+        <div class="field">
+          <label>📦 Other Amount (Rs.)</label>
+          <input type="number" id="other_${i}" value="${otherExp&&otherExp!=="0"?otherExp:""}" placeholder="Amount" inputmode="decimal" oninput="calcTotals(${i});saveDraft(${i})">
+        </div>
+        <div class="field">
+          <label>📦 Other Reason</label>
+          <input type="text" id="other_note_${i}" value="${d.otherNote||""}" placeholder="e.g. Stationery" oninput="saveDraft(${i})">
+        </div>
+      </div>
+
+      <div class="section-divider">🚗 Travelling</div>
+      <div id="trips_${i}">${tripLegsHtml}</div>
+      <button class="add-trip-btn" id="add_trip_btn_${i}" onclick="addTrip(${i})">➕ Add Trip</button>
+
+      <div class="totals-grid">
+        <div class="total-box">
+          <div class="total-box-label">🏢 Office Claim</div>
+          <div class="total-box-amount" id="office_total_${i}">Rs. 0</div>
+        </div>
+        <div class="total-box orange-box">
+          <div class="total-box-label">💵 My Money</div>
+          <div class="total-box-amount" id="mymoney_total_${i}">Rs. 0</div>
+        </div>
+        <div class="total-box green-box">
+          <div class="total-box-label">💰 Actual</div>
+          <div class="total-box-amount" id="actual_total_${i}">Rs. 0</div>
+        </div>
+      </div>
+
+      <div class="line-total-box">
+        <span class="line-total-label">📊 Line Total (K)</span>
+        <span class="line-total-amount" id="line_total_${i}">Rs. 0</span>
+      </div>
+
+      <button class="save-row-btn" id="save_btn_${i}" onclick="saveRow(${i})">💾 Save to Sheet</button>
+      <button class="clear-draft-btn" onclick="clearDraft(${i})">🗑️ Clear Draft</button>
+      <button class="collapse-bottom-btn" onclick="toggleDay(${i})">▲ Collapse this day</button>
+    </div>
+  </div>`;
+}
+
+function buildTripLeg(i,t,draftTrip,sheetPrice,isTripSaved){
+  const transport=draftTrip.transport||"";
+  const claim    =draftTrip.claim    ||"";
+  const proof    =draftTrip.proof    ||"";
+  const actual   =draftTrip.actual   !==undefined?draftTrip.actual:(sheetPrice||"");
+  const areaOff  =draftTrip.areaOff  !==undefined?draftTrip.areaOff:"";
+  const route    =draftTrip.route    ||"";
+
+  let proofOpts="<option value=''>-- Select --</option>";
+  if(transport==="Bus")         proofOpts+=`<option value="With Ticket" ${proof==="With Ticket"?"selected":""}>🎫 With Ticket</option><option value="Without Ticket" ${proof==="Without Ticket"?"selected":""}>🚌 Without Ticket</option>`;
+  else if(transport==="Taxi")   proofOpts+=`<option value="Taxi Photo" ${proof==="Taxi Photo"?"selected":""}>📸 Taxi Photo</option><option value="No Proof" ${proof==="No Proof"?"selected":""}>❌ No Proof</option>`;
+  else if(transport==="Pick Me")proofOpts+=`<option value="Taxi Photo" ${proof==="Taxi Photo"?"selected":""}>📸 Taxi Photo</option><option value="No Proof" ${proof==="No Proof"?"selected":""}>❌ No Proof</option>`;
+  else if(transport==="Bike")   proofOpts+=`<option value="Other Bills" ${proof==="Other Bills"?"selected":""}>🧾 Other Bills</option><option value="No Proof" ${proof==="No Proof"?"selected":""}>❌ No Proof</option>`;
+
+  const summary=transport?`${transport} | ${claim||"?"} | Rs.${actual||0}`:`Trip ${t+1}`;
+
+  return `<div class="trip-leg ${isTripSaved?"trip-saved":""}" id="trip_leg_${i}_${t}">
+    <div class="trip-leg-header" onclick="toggleTrip(${i},${t})">
+      <div>
+        <div class="trip-leg-title">🚗 Trip ${t+1}${isTripSaved?'<span class="trip-saved-badge">✅ Saved</span>':''}</div>
+        <div class="trip-leg-summary">${summary}</div>
+      </div>
+      <div class="trip-leg-actions" onclick="event.stopPropagation()">
+        ${isTripSaved?`<button class="edit-trip-btn" onclick="editTrip(${i},${t})">✏️ Edit</button>`:`<button class="save-trip-btn" onclick="saveTrip(${i},${t})">💾 Save Trip</button>`}
+        ${t>0&&!isTripSaved?`<button class="remove-trip-btn" onclick="removeTrip(${i},${t})">✕</button>`:""}
+        <span class="trip-arrow ${isTripSaved?"collapsed":""}" id="trip_arrow_${i}_${t}">▼</span>
+      </div>
+    </div>
+    <div class="trip-body ${isTripSaved?"collapsed":""}" id="trip_body_${i}_${t}">
+      <div class="trip-label">Transport Method</div>
+      <select class="trip-select" id="tt_${i}_${t}" onchange="onTransportChange(${i},${t})">
+        <option value="" ${!transport?"selected":""}>-- Select --</option>
+        <option value="Bus"     ${transport==="Bus"?"selected":""}>🚌 Bus</option>
+        <option value="Taxi"    ${transport==="Taxi"?"selected":""}>🚕 Taxi</option>
+        <option value="Pick Me" ${transport==="Pick Me"?"selected":""}>🛺 Pick Me</option>
+        <option value="Bike"    ${transport==="Bike"?"selected":""}>🏍️ Bike</option>
+      </select>
+      <div class="trip-label">Claim Type</div>
+      <select class="trip-select" id="tc_${i}_${t}" onchange="calcTotals(${i});saveDraft(${i})">
+        <option value="" ${!claim?"selected":""}>-- Select --</option>
+        <option value="Claim Office"   ${claim==="Claim Office"?"selected":""}>🏢 Claim Office</option>
+        <option value="Claim My Money" ${claim==="Claim My Money"?"selected":""}>💵 Claim My Money</option>
+      </select>
+      <div class="trip-label">Proof</div>
+      <select class="trip-select" id="tp_${i}_${t}">${proofOpts}</select>
+      <div class="trip-amounts">
+        <div>
+          <div class="trip-label">Actual Expenses (Rs.)</div>
+          <input type="number" class="trip-input" id="ta_${i}_${t}" value="${actual}" placeholder="0" inputmode="decimal" oninput="calcTotals(${i});saveDraft(${i})">
+        </div>
+        <div>
+          <div class="trip-label">Area Office Claim (Rs.)</div>
+          <input type="number" class="trip-input" id="to_${i}_${t}" value="${areaOff}" placeholder="0" inputmode="decimal" oninput="calcTotals(${i});saveDraft(${i})">
+        </div>
+      </div>
+      <div class="trip-label">Route (saved as comment)</div>
+      <input type="text" class="trip-input" id="tr_${i}_${t}" value="${route}" placeholder="e.g. Ampara to Colombo" oninput="saveDraft(${i})">
+    </div>
+  </div>`;
+}
+
+// ── Auto-fills ──────────────────────────────────────────────
+function onStatusChange(i){
+  const s=document.getElementById("status_"+i).value;
+  if(s==="Holiday"||s==="Leave"){
+    const el=document.getElementById("reason_"+i);
+    if(el&&!el.value) el.value=s;
+    document.getElementById("rw_"+i).classList.remove("hidden");
+  }
+  document.getElementById("rw_"+i).classList.toggle("hidden",!["Not Archived","Cancelled","Holiday","Leave"].includes(s));
+  const card=document.getElementById("card_"+i),badge=document.getElementById("badge_"+i);
+  card.className="day-card"+(s==="Archived"?" archived":s==="Not Archived"?" not-archived":s==="Cancelled"?" cancelled":s==="Holiday"?" holiday":s==="Leave"?" leave":"");
+  const map={"Archived":["badge-archived","✅ Archived"],"Not Archived":["badge-not-archived","❌ Not Archived"],"Cancelled":["badge-cancelled","🟡 Cancelled"],"Holiday":["badge-holiday","🔵 Holiday"],"Leave":["badge-leave","🟠 Leave"]};
+  if(map[s]){badge.className="status-badge "+map[s][0];badge.textContent=map[s][1];}
+  saveDraft(i);
+}
+
+function onLodgingChange(i){
+  const v=document.getElementById("lodging_"+i).value;
+  if(v==="2500"){const nm=document.getElementById("nightmeal_"+i);if(nm)nm.value="450";}
+  calcTotals(i);saveDraft(i);
+}
+
+function onTransportChange(i,t){
+  const transport=document.getElementById("tt_"+i+"_"+t)?.value;
+  if(transport==="Bike") document.getElementById("tc_"+i+"_"+t).value="Claim My Money";
+  const proofSel=document.getElementById("tp_"+i+"_"+t);
+  if(proofSel){
+    proofSel.innerHTML="<option value=''>-- Select --</option>";
+    let opts=[];
+    if(transport==="Bus")         opts=[["With Ticket","🎫 With Ticket"],["Without Ticket","🚌 Without Ticket"]];
+    else if(transport==="Taxi")   opts=[["Taxi Photo","📸 Taxi Photo"],["No Proof","❌ No Proof"]];
+    else if(transport==="Pick Me")opts=[["Taxi Photo","📸 Taxi Photo"],["No Proof","❌ No Proof"]];
+    else if(transport==="Bike")   opts=[["Other Bills","🧾 Other Bills"],["No Proof","❌ No Proof"]];
+    opts.forEach(([v,l])=>{const o=document.createElement("option");o.value=v;o.textContent=l;proofSel.appendChild(o);});
+  }
+  calcTotals(i);saveDraft(i);
+}
+
+function onFuelChange(i){
+  document.getElementById("fuel_wrap_"+i).classList.toggle("hidden",document.getElementById("fuel_sel_"+i).value!=="manual");
+  calcTotals(i);saveDraft(i);
+}
+
+function onOtherChange(i){
+  document.getElementById("other_wrap_"+i).classList.toggle("hidden",document.getElementById("other_sel_"+i).value!=="manual");
+  calcTotals(i);saveDraft(i);
+}
+
+// ── Draft ───────────────────────────────────────────────────
+function saveDraft(i){
+  const count=tripCount[i]||1;
+  const tripData=[];
+  for(let t=0;t<count;t++){
+    if(!document.getElementById("ta_"+i+"_"+t)) continue;
+    tripData.push({
+      transport:document.getElementById("tt_"+i+"_"+t)?.value||"",
+      claim:    document.getElementById("tc_"+i+"_"+t)?.value||"",
+      proof:    document.getElementById("tp_"+i+"_"+t)?.value||"",
+      actual:   document.getElementById("ta_"+i+"_"+t)?.value||"",
+      areaOff:  document.getElementById("to_"+i+"_"+t)?.value||"",
+      route:    document.getElementById("tr_"+i+"_"+t)?.value||""
+    });
+  }
+  const fuelSel=document.getElementById("fuel_sel_"+i)?.value;
+  const othSel =document.getElementById("other_sel_"+i)?.value;
+  drafts[i]={
+    status:   document.getElementById("status_"+i)?.value||"",
+    reason:   document.getElementById("reason_"+i)?.value||"",
+    batta:    document.getElementById("batta_"+i)?.value||"",
+    lodging:  document.getElementById("lodging_"+i)?.value||"",
+    nightmeal:document.getElementById("nightmeal_"+i)?.value||"",
+    fuel:     fuelSel==="manual"?document.getElementById("fuel_"+i)?.value||"":"0",
+    fuelNote: document.getElementById("fuel_note_"+i)?.value||"",
+    other:    othSel==="manual"?document.getElementById("other_"+i)?.value||"":"0",
+    otherNote:document.getElementById("other_note_"+i)?.value||"",
+    trips:    tripData
+  };
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));
+}
+
+function clearDraft(i){
+  if(!confirm("Clear all draft data for this day?")) return;
+  delete drafts[i];
+  delete tripSaves[i];
+  delete tripCounts[i];
+  localStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));
+  localStorage.setItem(TRIP_SAVE_KEY,JSON.stringify(tripSaves));
+  localStorage.setItem(TRIP_COUNT_KEY,JSON.stringify(tripCounts));
+  // Re-render card
+  const card=document.getElementById("card_"+i);
+  if(card){
+    tripCount[i]=1;
+    const div=document.createElement("div");
+    div.innerHTML=buildDayCard(allRows[i],i);
+    card.replaceWith(div.firstElementChild);
+    calcTotals(i);
+  }
+  showToast("🗑️ Draft cleared","success");
+}
+
+// ── Trip save/edit ─────────────────────────────────────────
+function saveTrip(i,t){
+  const transport=document.getElementById("tt_"+i+"_"+t)?.value;
+  const claim    =document.getElementById("tc_"+i+"_"+t)?.value;
+  if(!transport||!claim){showToast("Please select Transport and Claim Type","error");return;}
+  if(!tripSaves[i]) tripSaves[i]=[];
+  tripSaves[i][t]=true;
+  localStorage.setItem(TRIP_SAVE_KEY,JSON.stringify(tripSaves));
+  tripCounts[i]=tripCount[i];
+  localStorage.setItem(TRIP_COUNT_KEY,JSON.stringify(tripCounts));
+  saveDraft(i);
+  // Re-render trip leg
+  const leg=document.getElementById("trip_leg_"+i+"_"+t);
+  if(leg){
+    const dt=(drafts[i]?.trips||[])[t]||{};
+    const div=document.createElement("div");
+    div.innerHTML=buildTripLeg(i,t,dt,allRows[i]?.[12+t]||"",true);
+    leg.replaceWith(div.firstElementChild);
+  }
+  showToast("✅ Trip "+(t+1)+" saved!","success");
+  calcTotals(i);
+}
+
+function editTrip(i,t){
+  if(!tripSaves[i]) tripSaves[i]=[];
+  tripSaves[i][t]=false;
+  localStorage.setItem(TRIP_SAVE_KEY,JSON.stringify(tripSaves));
+  const leg=document.getElementById("trip_leg_"+i+"_"+t);
+  if(leg){
+    const dt=(drafts[i]?.trips||[])[t]||{};
+    const div=document.createElement("div");
+    div.innerHTML=buildTripLeg(i,t,dt,"",false);
+    leg.replaceWith(div.firstElementChild);
+  }
+}
+
+function addTrip(i){
+  const count=tripCount[i]||1;
+  if(count>=10){showToast("Maximum 10 trips reached","error");return;}
+  tripCount[i]=count+1;
+  tripCounts[i]=tripCount[i];
+  localStorage.setItem(TRIP_COUNT_KEY,JSON.stringify(tripCounts));
+  const container=document.getElementById("trips_"+i);
+  const div=document.createElement("div");
+  div.innerHTML=buildTripLeg(i,count,{},"",false);
+  container.appendChild(div.firstElementChild);
+  calcTotals(i);
+}
+
+function removeTrip(i,t){
+  const el=document.getElementById("trip_leg_"+i+"_"+t);
+  if(el) el.remove();
+  tripCount[i]=Math.max((tripCount[i]||1)-1,1);
+  tripCounts[i]=tripCount[i];
+  localStorage.setItem(TRIP_COUNT_KEY,JSON.stringify(tripCounts));
+  calcTotals(i);
+}
+
+// ── Totals ─────────────────────────────────────────────────
+function calcTotals(i){
+  let officeTotal=0,myMoneyTotal=0,actualTotal=0,myOfficeClaimTotal=0;
+  const count=tripCount[i]||1;
+  for(let t=0;t<count;t++){
+    if(!document.getElementById("ta_"+i+"_"+t)) continue;
+    const claim  =document.getElementById("tc_"+i+"_"+t)?.value||"";
+    const actual =parseFloat(document.getElementById("ta_"+i+"_"+t)?.value||0)||0;
+    const areaOff=parseFloat(document.getElementById("to_"+i+"_"+t)?.value||0)||0;
+    actualTotal+=actual;
+    if(claim==="Claim Office")   officeTotal+=areaOff;
+    if(claim==="Claim My Money"){myMoneyTotal+=actual;myOfficeClaimTotal+=areaOff;}
+  }
+  document.getElementById("office_total_"+i).textContent ="Rs. "+officeTotal.toLocaleString();
+  document.getElementById("mymoney_total_"+i).textContent="Rs. "+myMoneyTotal.toLocaleString();
+  document.getElementById("actual_total_"+i).textContent ="Rs. "+actualTotal.toLocaleString();
+  const batta  =parseFloat(document.getElementById("batta_"+i)?.value||0)||0;
+  const lodging=parseFloat(document.getElementById("lodging_"+i)?.value||0)||0;
+  const nightM =parseFloat(document.getElementById("nightmeal_"+i)?.value||0)||0;
+  const fuelSel=document.getElementById("fuel_sel_"+i)?.value;
+  const fuel   =fuelSel==="manual"?(parseFloat(document.getElementById("fuel_"+i)?.value||0)||0):0;
+  const othSel =document.getElementById("other_sel_"+i)?.value;
+  const other  =othSel==="manual"?(parseFloat(document.getElementById("other_"+i)?.value||0)||0):0;
+  const lineTotal=batta+lodging+nightM+officeTotal+fuel+other;
+  document.getElementById("line_total_"+i).textContent="Rs. "+lineTotal.toLocaleString();
+}
+
+// ── Save Row ────────────────────────────────────────────────
+async function saveRow(i){
+  const status  =document.getElementById("status_"+i).value;
+  const reason  =document.getElementById("reason_"+i)?.value.trim()||"";
+  const batta   =document.getElementById("batta_"+i).value;
+  const lodging =document.getElementById("lodging_"+i).value;
+  const nightM  =document.getElementById("nightmeal_"+i).value;
+  const fuelSel =document.getElementById("fuel_sel_"+i)?.value;
+  const fuel    =fuelSel==="manual"?document.getElementById("fuel_"+i)?.value.trim()||"":"";
+  const fuelNote=document.getElementById("fuel_note_"+i)?.value.trim()||"";
+  const othSel  =document.getElementById("other_sel_"+i)?.value;
+  const other   =othSel==="manual"?document.getElementById("other_"+i)?.value.trim()||"":"";
+  const othNote =document.getElementById("other_note_"+i)?.value.trim()||"";
+
+  if(!status){showToast("Please select a Status","error");return;}
+  if(["Not Archived","Cancelled","Holiday","Leave"].includes(status)&&!reason){showToast("Please type a Reason","error");return;}
+
+  let officeTotal=0,myMoneyTotal=0,actualTotal=0,myOfficeClaimTotal=0;
+  const tripAreaOffice=[],tripComments=[];
+  const count=tripCount[i]||1;
+
+  for(let t=0;t<10;t++){
+    if(t<count&&document.getElementById("ta_"+i+"_"+t)){
+      const transport=document.getElementById("tt_"+i+"_"+t)?.value||"";
+      const claim    =document.getElementById("tc_"+i+"_"+t)?.value||"";
+      const proof    =document.getElementById("tp_"+i+"_"+t)?.value||"";
+      const actual   =parseFloat(document.getElementById("ta_"+i+"_"+t)?.value||0)||0;
+      const areaOff  =parseFloat(document.getElementById("to_"+i+"_"+t)?.value||0)||0;
+      const route    =document.getElementById("tr_"+i+"_"+t)?.value.trim()||"";
+      actualTotal+=actual;
+      if(claim==="Claim Office")   officeTotal+=areaOff;
+      if(claim==="Claim My Money"){myMoneyTotal+=actual;myOfficeClaimTotal+=areaOff;}
+      // Save 0 in M-V only if transport AND claim are filled
+      const hasTrip=transport&&claim;
+      tripAreaOffice.push(hasTrip?(areaOff>0?areaOff:0):"");
+      const cp=[];
+      if(transport) cp.push("Transport: "+transport);
+      if(claim)     cp.push("Claim: "+claim);
+      if(route)     cp.push("Route: "+route);
+      if(proof)     cp.push("Proof: "+proof);
+      if(areaOff>0) cp.push("Area Office Claim: Rs."+areaOff);
+      tripComments.push(cp.join("\n"));
+    }else{tripAreaOffice.push("");tripComments.push("");}
+  }
+
+  const b =parseFloat(batta||0)||0;
+  const l =parseFloat(lodging||0)||0;
+  const nm=parseFloat(nightM||0)||0;
+  const f =parseFloat(fuel||0)||0;
+  const o =parseFloat(other||0)||0;
+  const lineTotal=b+l+nm+officeTotal+f+o;
+
+  const row=[
+    allRows[i][0],allRows[i][1],
+    status,reason,
+    batta==="0"||!batta?"":batta,
+    lodging==="0"||!lodging?"":lodging,
+    nightM==="0"||!nightM?"":nightM,
+    officeTotal>0?officeTotal:"",
+    fuel||"",other||"",
+    lineTotal>0?lineTotal:"",
+    allRows[i][11]||"",
+    ...tripAreaOffice,
+    myMoneyTotal>0?myMoneyTotal:"",
+    actualTotal>0?actualTotal:"",
+    myOfficeClaimTotal>0?myOfficeClaimTotal:""
+  ];
+
+  const btn=document.getElementById("save_btn_"+i);
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Saving…';
+
+  try{
+    const res=await callScript({action:"updateRow",rowIndex:i+1,row});
+    if(res.status==="ok"){
+      await callScript({action:"addComments",rowIndex:i+1,comments:tripComments,startCol:13});
+      await callScript({action:"addSingleComment",rowIndex:i+1,col:9,comment:fuelNote});
+      await callScript({action:"addSingleComment",rowIndex:i+1,col:10,comment:othNote});
+      await callScript({action:"colorRow",rowIndex:i+1,status});
+      await callScript({action:"lockRow",rowIndex:i+1});
+      showToast("✅ Saved to Sheet!","success");
+      btn.classList.add("saved");btn.innerHTML="✅ Saved";
+      allRows[i]=row;
+      // Keep draft — don't clear
+      setTimeout(()=>{btn.disabled=false;btn.classList.remove("saved");btn.innerHTML="💾 Save to Sheet";},2000);
+    }else{showToast("Error: "+res.message,"error");btn.disabled=false;btn.innerHTML="💾 Save to Sheet";}
+  }catch(e){showToast("Failed. Check internet.","error");btn.disabled=false;btn.innerHTML="💾 Save to Sheet";}
+}
+
+function showToast(msg,type=""){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.className="show "+type;
+  setTimeout(()=>t.className="",3000);
+}
+
+// ── PWA Service Worker ──────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
